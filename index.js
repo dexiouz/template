@@ -11,10 +11,25 @@ import {
     InMemoryCache,
     createHttpLink,
     ApolloProvider,
+    from,
 } from '@apollo/client';
+import { onError } from '@apollo/client/link/error';
 import { setContext } from '@apollo/client/link/context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+    if (graphQLErrors) {
+        graphQLErrors.forEach(({ message, locations, path }) =>
+            console.log(
+                `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`,
+            ),
+        );
+    }
+    if (networkError) {
+        console.log(`[Network error]: ${networkError}`);
+    }
+});
 
 const httpLink = createHttpLink({
     uri: '/graphql',
@@ -33,7 +48,8 @@ const authLink = setContext((_, { headers }) => {
 });
 
 const client = new ApolloClient({
-    link: authLink.concat(httpLink),
+    // link: authLink.concat(httpLink),
+    link: from([errorLink, authLink, httpLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
         watchQuery: {
